@@ -205,7 +205,6 @@ class FCN2(nn.Module):
         x = self.fcs(x)
         x = self.fch(x)
         x = self.fce(x)
-        output2 = self.sigmoid(x) * self.scale + 1
         return x
 
 
@@ -763,8 +762,11 @@ def train_sequential_model(num_iterations=10000, d=0.01, data_tensors=None, pati
     i = 0
     with tqdm(total=num_iterations, desc="Sequential Training") as pbar:
         while i <= num_iterations:
+            # Number of inner iterations for each PINN (same for all three)  
+            inner_iterations = 30
+            
             # Train u1
-            for j in range(30):
+            for j in range(inner_iterations):
                 optimiser1.zero_grad()
                 u1_b_0 = pinn1(x_b_0)  # (1, 1)
                 u1_b_1 = pinn1(x_b_1)  # (1, 1)
@@ -782,34 +784,36 @@ def train_sequential_model(num_iterations=10000, d=0.01, data_tensors=None, pati
                 optimiser1.step()
             
             # Train u2
-            optimiser2.zero_grad()
-            u2_b_0 = pinn2(x_b_0)  # (1, 1)
-            u2_b_1 = pinn2(x_b_1)  # (1, 1)
-            u2_physics = pinn2(x_p)  # (300,1)
-            du2dx = torch.autograd.grad(u2_physics, x_p, torch.ones_like(u2_physics), create_graph=True)[0]
-            
-            u2_loss1 = torch.mean((torch.squeeze(u2_b_0))**2) + torch.mean((torch.squeeze(u2_b_1))**2)
-            u2_loss2 = torch.mean((u1_physics.detach() * du2dx + u2_physics * du1dx.detach())**2)
-            u2_loss3 = torch.mean((2 * (u3_physics.detach() + 1/d) * du2dx - u2_physics * du3dx.detach() - (1/d) * u3_physics.detach())**2)
-            physics_loss_u2 = u2_loss2 + u2_loss3
-            boundary_loss_u2 = u2_loss1
-            
-            u2_loss = lambdas[1] * u2_loss1 + lambdas[4] * u2_loss2 + lambdas[5] * u2_loss3
-            u2_loss.backward()
-            optimiser2.step()
+            for j in range(inner_iterations):
+                optimiser2.zero_grad()
+                u2_b_0 = pinn2(x_b_0)  # (1, 1)
+                u2_b_1 = pinn2(x_b_1)  # (1, 1)
+                u2_physics = pinn2(x_p)  # (300,1)
+                du2dx = torch.autograd.grad(u2_physics, x_p, torch.ones_like(u2_physics), create_graph=True)[0]
+                
+                u2_loss1 = torch.mean((torch.squeeze(u2_b_0))**2) + torch.mean((torch.squeeze(u2_b_1))**2)
+                u2_loss2 = torch.mean((u1_physics.detach() * du2dx + u2_physics * du1dx.detach())**2)
+                u2_loss3 = torch.mean((2 * (u3_physics.detach() + 1/d) * du2dx - u2_physics * du3dx.detach() - (1/d) * u3_physics.detach())**2)
+                physics_loss_u2 = u2_loss2 + u2_loss3
+                boundary_loss_u2 = u2_loss1
+                
+                u2_loss = lambdas[1] * u2_loss1 + lambdas[4] * u2_loss2 + lambdas[5] * u2_loss3
+                u2_loss.backward()
+                optimiser2.step()
             
             # Train u3
-            optimiser3.zero_grad()
-            u3_physics = pinn3(x_p)
-            du3dx = torch.autograd.grad(u3_physics, x_p, torch.ones_like(u3_physics), create_graph=True)[0]
-            
-            u3_loss1 = torch.mean((u3_physics * du1dx.detach() + u1_physics.detach() * du3dx)**2)
-            u3_loss2 = torch.mean((u2_physics.detach() * du3dx - 2 * (u3_physics + 1/d) * du2dx.detach() + (1/d) * u3_physics)**2)
-            physics_loss_u3 = u3_loss1 + u3_loss2
-            
-            u3_loss = lambdas[3] * u3_loss1 + lambdas[7] * u3_loss2
-            u3_loss.backward()
-            optimiser3.step()
+            for j in range(inner_iterations):
+                optimiser3.zero_grad()
+                u3_physics = pinn3(x_p)
+                du3dx = torch.autograd.grad(u3_physics, x_p, torch.ones_like(u3_physics), create_graph=True)[0]
+                
+                u3_loss1 = torch.mean((u3_physics * du1dx.detach() + u1_physics.detach() * du3dx)**2)
+                u3_loss2 = torch.mean((u2_physics.detach() * du3dx - 2 * (u3_physics + 1/d) * du2dx.detach() + (1/d) * u3_physics)**2)
+                physics_loss_u3 = u3_loss1 + u3_loss2
+                
+                u3_loss = lambdas[3] * u3_loss1 + lambdas[7] * u3_loss2
+                u3_loss.backward()
+                optimiser3.step()
             
             # Store metrics
             boundary_u1s.append(boundary_loss_u1.detach())
