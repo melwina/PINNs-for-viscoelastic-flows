@@ -156,24 +156,35 @@ class PINN(nn.Module):
         
         return self.output_layer(x)
 
-
 class FCN(nn.Module):
-    """Defines a fully-connected network for physics-informed neural networks."""
     def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
         super().__init__()
         activation = nn.Tanh
-        
-        self.fcs = nn.Sequential(*[
-                        nn.Linear(N_INPUT, N_HIDDEN),
-                        activation()])
-        
+
+        self.fcs = nn.Sequential(
+            nn.Linear(N_INPUT, N_HIDDEN),
+            activation()
+        )
+
         self.fch = nn.Sequential(*[
-                        nn.Sequential(*[
-                            nn.Linear(N_HIDDEN, N_HIDDEN),
-                            activation()]) for _ in range(N_LAYERS-1)])
-        
+            nn.Sequential(
+                nn.Linear(N_HIDDEN, N_HIDDEN),
+                activation()
+            ) for _ in range(N_LAYERS - 1)
+        ])
+
         self.fce = nn.Linear(N_HIDDEN, N_OUTPUT)
-    
+
+        self._init_weights()
+
+    def _init_weights(self):
+        # Initialize weights with Xavier initialization
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
     def forward(self, x):
         x = self.fcs(x)
         x = self.fch(x)
