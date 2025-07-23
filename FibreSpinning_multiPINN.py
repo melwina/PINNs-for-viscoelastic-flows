@@ -1215,7 +1215,7 @@ def main():
     # print(f"Higher R² values indicate better model performance (closer to 1.0 is better)")
     
     # Option 3: Run hyperparameter grid search
-    best_result = run_grid_search(max_iterations=100, patience=1000)
+    best_result = run_grid_search(max_iterations=40000, patience=1000)
     print(f"\nGrid search completed. Best model saved with MSE: {best_result['total_mse']:.6e}")
     print(f"Best hyperparameters: {best_result['n_hidden']} neurons, {best_result['n_layers']} layers, learning rate {best_result['learning_rate']}")
     print(f"Check the 'hyperparam_results' directory for detailed results and model files.")
