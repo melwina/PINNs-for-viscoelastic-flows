@@ -157,59 +157,8 @@ class PINN(nn.Module):
         return self.output_layer(x)
 
 
-class FCN1(nn.Module):
-    """Defines a fully-connected network for the first variable (u1)."""
-    def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
-        super().__init__()
-        activation = nn.Tanh
-        
-        self.fcs = nn.Sequential(*[
-                        nn.Linear(N_INPUT, N_HIDDEN),
-                        activation()])
-        
-        self.fch = nn.Sequential(*[
-                        nn.Sequential(*[
-                            nn.Linear(N_HIDDEN, N_HIDDEN),
-                            activation()]) for _ in range(N_LAYERS-1)])
-        
-        self.fce = nn.Linear(N_HIDDEN, N_OUTPUT)
-        self.sigmoid = nn.Sigmoid()
-    
-    def forward(self, x):
-        x = self.fcs(x)
-        x = self.fch(x)
-        x = self.fce(x)
-        return x
-
-
-class FCN2(nn.Module):
-    """Defines a fully-connected network for the second variable (u2)."""
-    def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
-        super().__init__()
-        activation = nn.Tanh
-        
-        self.fcs = nn.Sequential(*[
-                        nn.Linear(N_INPUT, N_HIDDEN),
-                        activation()])
-        
-        self.fch = nn.Sequential(*[
-                        nn.Sequential(*[
-                            nn.Linear(N_HIDDEN, N_HIDDEN),
-                            activation()]) for _ in range(N_LAYERS-1)])
-        
-        self.fce = nn.Linear(N_HIDDEN, N_OUTPUT)
-        self.scale = 19
-        self.sigmoid = nn.Sigmoid()
-    
-    def forward(self, x):
-        x = self.fcs(x)
-        x = self.fch(x)
-        x = self.fce(x)
-        return x
-
-
-class FCN3(nn.Module):
-    """Defines a fully-connected network for the third variable (u3)."""
+class FCN(nn.Module):
+    """Defines a fully-connected network for physics-informed neural networks."""
     def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
         super().__init__()
         activation = nn.Tanh
@@ -724,9 +673,9 @@ def train_sequential_model(num_iterations=10000, d=0.01, data_tensors=None, pati
         Dictionary containing the trained models and metrics
     """
     # Initialize models
-    pinn1 = FCN1(1, 1, 32, 4)
-    pinn2 = FCN2(1, 1, 32, 4)
-    pinn3 = FCN3(1, 1, 32, 4)
+    pinn1 = FCN(1, 1, 32, 4)
+    pinn2 = FCN(1, 1, 32, 4)
+    pinn3 = FCN(1, 1, 32, 4)
     
     # Initialize optimizers
     optimiser1 = torch.optim.Adam(pinn1.parameters(), lr=1e-3)
@@ -1008,9 +957,9 @@ def run_grid_search(max_iterations=10000, patience=1000):
         print(f"  - Learning rate: {learning_rate}")
         
         # Create models with specified hyperparameters
-        pinn1 = FCN1(1, 1, n_hidden, n_layers)
-        pinn2 = FCN2(1, 1, n_hidden, n_layers)
-        pinn3 = FCN3(1, 1, n_hidden, n_layers)
+        pinn1 = FCN(1, 1, n_hidden, n_layers)
+        pinn2 = FCN(1, 1, n_hidden, n_layers)
+        pinn3 = FCN(1, 1, n_hidden, n_layers)
         
         # Move models to device
         pinn1 = pinn1.to(device)
@@ -1167,9 +1116,9 @@ def run_grid_search(max_iterations=10000, patience=1000):
             # Save best models
             if best_models is not None:
                 # Create models with best hyperparameters
-                best_pinn1 = FCN1(1, 1, n_hidden, n_layers).to(device)
-                best_pinn2 = FCN2(1, 1, n_hidden, n_layers).to(device)
-                best_pinn3 = FCN3(1, 1, n_hidden, n_layers).to(device)
+                best_pinn1 = FCN(1, 1, n_hidden, n_layers).to(device)
+                best_pinn2 = FCN(1, 1, n_hidden, n_layers).to(device)
+                best_pinn3 = FCN(1, 1, n_hidden, n_layers).to(device)
                 
                 # Load best weights
                 best_pinn1.load_state_dict(best_models['pinn1'])
@@ -1266,7 +1215,7 @@ def main():
     # print(f"Higher R² values indicate better model performance (closer to 1.0 is better)")
     
     # Option 3: Run hyperparameter grid search
-    best_result = run_grid_search(max_iterations=40000, patience=1000)
+    best_result = run_grid_search(max_iterations=100, patience=1000)
     print(f"\nGrid search completed. Best model saved with MSE: {best_result['total_mse']:.6e}")
     print(f"Best hyperparameters: {best_result['n_hidden']} neurons, {best_result['n_layers']} layers, learning rate {best_result['learning_rate']}")
     print(f"Check the 'hyperparam_results' directory for detailed results and model files.")
