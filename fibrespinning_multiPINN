@@ -372,7 +372,7 @@ while i<=80000:
     u3_loss2 =  torch.mean((u2_physics.detach() *du3dx - 2 * (u3_physics + 1/d)*du2dx.detach() + (1/d)*u3_physics)**2)
     physics_loss_u3 = u3_loss1 + u3_loss2
 
-    u3_loss = lambdas[3] * u3_loss1 + lambdas[7] * u3_loss2
+    u3_loss = lambdas[3] * u3_loss1 + lambdas[3] * u3_loss2
     u3_loss.backward()
     optimiser3.step()
 
